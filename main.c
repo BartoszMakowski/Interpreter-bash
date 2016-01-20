@@ -24,6 +24,25 @@
  * 
  */
 
+void wypisz_polecenie(char **polecenie){
+    printf("POLECENIE:");
+    while(*polecenie){
+        printf(" %s",*polecenie++);
+    }   
+    printf("\n");    
+}
+
+void czysc_polecenie(char ***polecenie){
+//    wypisz_polecenie(*polecenie);
+    while (*(polecenie+2)) {        
+        *(polecenie) = *(polecenie+2);
+        *polecenie++; 
+    }
+    *(polecenie++)=NULL;
+    *(polecenie++)=NULL;
+//    wypisz_polecenie(*polecenie);
+}
+
 int wykonaj_polecenie(char **polecenie){
     char **i;
     char *wyjscie = NULL;
@@ -35,39 +54,26 @@ int wykonaj_polecenie(char **polecenie){
     while (*i){
         if(strcmp(*i++,"<")==0){
             wejscie = *i++;
-//            printf("ZNALAZŁEM WEJŚCIE: %s | %s\n", wejscie, *(i-2));
-            while(*i){
-                *(i-2) = *i;
-                *(i-1) = *(i+1);
-                *i = *(i-2);
-                *i++;
-            }
-            *(i-1) = NULL;
-            *(i-2) = NULL;
-//            printf("WSTAWIONO: %s\n", *(i-3));
-            i = polecenie;
+            czysc_polecenie(&*(i-2));
+            *i--;
+            *i--;
+//            wypisz_polecenie(&*polecenie);
         }        
     }
     
     i = polecenie;
     while (*i) {
-//        printf("::%s::\n", *i);
         if(strcmp(*i++,">")==0){
             wyjscie = *i++;
-//            printf("ZNALAZŁEM: %s | %s\n", wyjscie, *(i-2));
-            while(*i){
-                *(i-2) = *i;
-                *(i-1) = *(i+1);
-                *i = *(i-2);
-                *i++;
-            }
-            *(i-1) = NULL;
-            *(i-2) = NULL;
-
-            printf("WSTAWIONO: %s\n", *(i-3));
-            i = polecenie;
+            czysc_polecenie(&*(i-2));
+            *i--;
+            *i--;
+//            wypisz_polecenie(&*polecenie);
         }
-    }           
+    }
+    
+//    printf("\n\nOSTETECZNIE:\n");
+    wypisz_polecenie(&*polecenie);
     
     if (!(pid=fork())){
         if(wyjscie){
