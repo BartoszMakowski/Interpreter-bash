@@ -16,14 +16,80 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 /*
  * 
  */
 
+int wykonaj_polecenie(char **polecenie){
+    char **i;
+    char *wyjscie = NULL;
+    char *wejscie = NULL;
+    int pid;
+    int fd_we, fd_wy;
+    i = polecenie;
+    
+    while (*i){
+        if(strcmp(*i++,"<")==0){
+            wejscie = *i++;
+//            printf("ZNALAZŁEM WEJŚCIE: %s | %s\n", wejscie, *(i-2));
+            while(*i){
+                *(i-2) = *i;
+                *(i-1) = *(i+1);
+                *i = *(i-2);
+                *i++;
+            }
+            *(i-1) = NULL;
+            *(i-2) = NULL;
+//            printf("WSTAWIONO: %s\n", *(i-3));
+            i = polecenie;
+        }        
+    }
+    
+    i = polecenie;
+    while (*i) {
+//        printf("::%s::\n", *i);
+        if(strcmp(*i++,">")==0){
+            wyjscie = *i++;
+//            printf("ZNALAZŁEM: %s | %s\n", wyjscie, *(i-2));
+            while(*i){
+                *(i-2) = *i;
+                *(i-1) = *(i+1);
+                *i = *(i-2);
+                *i++;
+            }
+            *(i-1) = NULL;
+            *(i-2) = NULL;
+
+            printf("WSTAWIONO: %s\n", *(i-3));
+            i = polecenie;
+        }
+    }           
+    
+    if (!(pid=fork())){
+        if(wyjscie){
+//            printf("WYJŚĆIE: %s \n", wyjscie);
+            close(1);
+            fd_we = open(wyjscie, O_WRONLY | O_CREAT, 0644);
+        }
+        if(wejscie){
+//            printf("WEJŚĆIE: %s \n", wejscie);
+            close(0);
+            fd_wy = open(wejscie, O_RDONLY, 0644);
+            dup2(0,fd_wy);
+        }
+        execvp(polecenie[0], polecenie);
+    }
+    wait(pid);    
+    return 0;    
+}
 
 
-void pobierzPolecenie(char linia[]){
+
+char **pobierz_polecenie(char linia[]){
     char **start;    
     char **argumenty;
     argumenty = calloc(sizeof(char*), 128);
@@ -49,23 +115,20 @@ void pobierzPolecenie(char linia[]){
             realloc(linia, sizeof(char) * n);
         }        
     }
-    *argumenty = NULL;
-    execvp(start[0],start);
+    *argumenty = NULL;        
+    return start;
 }
 
 int main(int argc, char** argv) {
-//    char *tab[] = {"ls","-la", NULL};
-//    execvp(tab[0],tab);
-    char *line;
+
+    char *linia;
+    char **polecenie;
     int pid;
 //    char **tekst;
     while(1){
-        line = readline("~ ~ ~ ~>");
-        if (!(pid=fork())){
-            pobierzPolecenie(line);
-        }
-        wait(pid);
-        
+        linia = readline("~ ~ ~ ~> ");
+        polecenie = pobierz_polecenie(linia);    
+        wykonaj_polecenie(polecenie);        
     }
     return (EXIT_SUCCESS);
 }
