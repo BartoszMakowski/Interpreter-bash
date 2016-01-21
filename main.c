@@ -19,10 +19,20 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 
 /*
  * 
  */
+
+int pid;
+
+void przekaz_sygnal(int signo){
+    printf("\n\nPrzesyłanie sygnału >>%i<< do procesu: >>PID: %i<<\n", signo, pid);
+    kill(pid, signo);
+    return 0;
+//    return(signo);    
+}
 
 void wypisz_polecenie(char **polecenie){
     printf("POLECENIE:");
@@ -45,26 +55,27 @@ void czysc_polecenie(char ***polecenie){
 
 int wykonaj_polecenie(char **polecenie){
     char **i;
+    char dopisz = 0;
     char *wyjscie = NULL;
     char *wejscie = NULL;
-    int pid;
+//    int pid;
     int fd_we, fd_wy;
     i = polecenie;
     
-    while (*i){
-        if(strcmp(*i++,"<")==0){
-            wejscie = *i++;
-            czysc_polecenie(&*(i-2));
-            *i--;
+    while (*i) {
+        if(strcmp(*i,">")==0){
+            wyjscie = *++i;
+            czysc_polecenie(&*(i-1));
             *i--;
 //            wypisz_polecenie(&*polecenie);
-        }        
-    }
-    
-    i = polecenie;
-    while (*i) {
-        if(strcmp(*i++,">")==0){
-            wyjscie = *i++;
+        } else if(strcmp(*i,">>")==0){
+            dopisz = 1;
+            wyjscie = *++i;
+            czysc_polecenie(&*(i-1));            
+            *i--;
+//            wypisz_polecenie(&*polecenie);
+        } else if(strcmp(*i++,"<")==0){
+            wejscie = *i++;
             czysc_polecenie(&*(i-2));
             *i--;
             *i--;
@@ -74,21 +85,32 @@ int wykonaj_polecenie(char **polecenie){
     
 //    printf("\n\nOSTETECZNIE:\n");
     wypisz_polecenie(&*polecenie);
-    
-    if (!(pid=fork())){
+        
+    if ((pid=fork())==0){        
         if(wyjscie){
 //            printf("WYJŚĆIE: %s \n", wyjscie);
             close(1);
-            fd_we = open(wyjscie, O_WRONLY | O_CREAT, 0644);
+            switch (dopisz){
+                case 0:
+                    fd_wy = open(wyjscie, O_WRONLY | O_CREAT, 0644);
+                    break;
+                case 1:
+                    fd_wy = open(wyjscie, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                    break;                    
+            }            
         }
         if(wejscie){
 //            printf("WEJŚĆIE: %s \n", wejscie);
             close(0);
             fd_wy = open(wejscie, O_RDONLY, 0644);
-            dup2(0,fd_wy);
+            dup2(0,fd_we);
         }
-        execvp(polecenie[0], polecenie);
+        execvp(polecenie[0], polecenie);        
     }
+    signal(SIGINT,przekaz_sygnal);        
+    printf("PID: %i\n", pid);
+//    sleep(1);
+//    kill(pid,15);
     wait(pid);    
     return 0;    
 }
@@ -130,7 +152,7 @@ int main(int argc, char** argv) {
     char *linia;
     char **polecenie;
     int pid;
-//    char **tekst;
+//    char **tekst;    
     while(1){
         linia = readline("~ ~ ~ ~> ");
         polecenie = pobierz_polecenie(linia);    
