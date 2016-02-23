@@ -7,7 +7,7 @@
 - [x] przerywanie programów kombinacją Ctrl-C bez przerywania pracy interpretera,
 - [x] obsługa wewnętrznego polecenia exit,
 - [ ] obsługa procesów działających w tle; wstrzymywanie i wznawianie,
-- [ ] rozpoznawanie pracy interaktywnej i wsadowej,
+- [x] rozpoznawanie pracy interaktywnej i wsadowej,
 - [x] obsługa potoków,
 - [ ] wewnętrzna komenda echo,
 - [ ] obsługa argumentów w postaci zmiennych pozycyjnych,
