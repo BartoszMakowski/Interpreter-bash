@@ -18,6 +18,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
 
@@ -26,41 +27,68 @@
  */
 
 int pid;
+int w_tle;
+int fd[100][2];
 
 void przekaz_sygnal(int signo){
-    printf("\n\nPrzesyłanie sygnału >>%i<< do procesu: >>PID: %i<<\n", signo, pid);
+    printf("Przesyłanie sygnału >>%i<< do procesu: >>PID: %i<<\n", signo, pid);
     kill(pid, signo);
-    return 0;
-//    return(signo);    
+}
+
+void obsluga_procesu_potomnego(int signo){
+    int s, pid2;
+    if (pid2 = waitpid(pid,&s,0) <=0){ 
+        pid2 = waitpid(-1,&s,0);
+        printf("PID %d: status zakończenia: %d\n", pid2, s>>8);
+    }
+    else{
+        printf("PID %d: status zakończenia: %d\n", pid, s>>8);
+    }    
 }
 
 void wypisz_polecenie(char **polecenie){
-    printf("POLECENIE:");
-    while(*polecenie){
-        printf(" %s",*polecenie++);
-    }   
-    printf("\n");    
+//    printf("POLECENIE:");
+//    while(*polecenie){
+//        printf(" %s",*polecenie++);
+//    }   
+//    printf("\n");    
 }
 
 void czysc_polecenie(char ***polecenie){
-//    wypisz_polecenie(*polecenie);
     while (*(polecenie+2)) {        
         *(polecenie) = *(polecenie+2);
         *polecenie++; 
     }
     *(polecenie++)=NULL;
     *(polecenie++)=NULL;
-//    wypisz_polecenie(*polecenie);
 }
 
-int wykonaj_polecenie(char **polecenie){
-    char **i;
+int wykonaj_polecenie(char **polecenie, int n, int k){
+    signal(SIGINT,przekaz_sygnal);        
+    int tlo = 0;
+    char **i = calloc(sizeof(char*), 128);
+    char **start;
+    start = i;
     char dopisz = 0;
     char *wyjscie = NULL;
     char *wejscie = NULL;
 //    int pid;
-    int fd_we, fd_wy;
-    i = polecenie;
+    int fd_we, fd_wy;    
+    char *tmp;
+    
+    tmp = strtok(*polecenie, " ");
+    while(tmp){
+//        printf("TMP: %s", tmp);
+        (*i) = calloc(sizeof(char), strlen(tmp));
+        strcpy(*i++, tmp);
+        tmp = strtok(NULL, " ");
+    }
+    
+    i = start;
+    
+    if(strcmp(*i,"exit") == 0){
+        exit(0);
+    }
     
     while (*i) {
         if(strcmp(*i,">")==0){
@@ -80,13 +108,30 @@ int wykonaj_polecenie(char **polecenie){
             *i--;
             *i--;
 //            wypisz_polecenie(&*polecenie);
-        }
+        }        
     }
     
-//    printf("\n\nOSTETECZNIE:\n");
-    wypisz_polecenie(&*polecenie);
+
+    
+    if(strcmp(*--i,"&")==0){
+        *i = NULL;
+        free(*i);
+        tlo = 1;
+    }
+    
+    i = start;
+    
+    wypisz_polecenie(&*i); 
         
-    if ((pid=fork())==0){        
+    if ((pid=fork())==0){
+            if(k > 0){
+                dup2(fd[k-1][0], 0);
+                close(fd[k-1][0]);
+            }
+            if(n>1){
+                dup2(fd[k][1], 1);
+                close(fd[k][1]);
+            }
         if(wyjscie){
 //            printf("WYJŚĆIE: %s \n", wyjscie);
             close(1);
@@ -105,59 +150,96 @@ int wykonaj_polecenie(char **polecenie){
             fd_wy = open(wejscie, O_RDONLY, 0644);
             dup2(0,fd_we);
         }
-        execvp(polecenie[0], polecenie);        
+        
+        if(!tlo){
+            execvp(i[0], i);
+        }
+        else{
+            int pid_tlo;
+            int status;
+            pid_tlo = fork();
+            if(pid_tlo == 0){
+                execvp(i[0], i);                
+            }
+            else{
+                waitpid(pid_tlo, &status, 0);
+                printf("PID: %d | STATUS ZAKOŃCZENIA: %d\n", pid_tlo, status);                
+            }
+        }
+//        
+//        close(fd[1]);
+        exit(0);
     }
-    signal(SIGINT,przekaz_sygnal);        
-    printf("PID: %i\n", pid);
-//    sleep(1);
-//    kill(pid,15);
-    wait(pid);    
+    else{
+        close(fd[k][1]);
+        if(!tlo){
+            int status;
+            waitpid(pid, &status, 0);
+//            printf("PID: %d | STATUS ZAKOŃCZENIA: %d\n", pid, status);             
+        }
+    }
+
     return 0;    
 }
 
 
 
-char **pobierz_polecenie(char linia[]){
+char **pobierz_polecenie(char *linia, int *n){
     char **start;    
     char **argumenty;
     argumenty = calloc(sizeof(char*), 128);
     start = argumenty;
+    char *tmp;
+    int i=0;
     
-    int n = strlen(linia);    
-    int i = 0;
-    
-    while(n>0){
-        i=0;
-        while(isgraph(linia[i])){
-            i++;  
-        }
-        n -= i+1;        
-        (*argumenty) = calloc(sizeof(char), i);
-        linia[i]='\0';
-        strcpy(*argumenty++, linia);
-        
-//        printf("OSTATNIO POBRANY ARGUMENT: %s\n", *(argumenty-1));
-        if(n>0){
-            memmove(linia, linia+i+1, sizeof(char) * n); 
-            linia[n] = '\0';        
-            realloc(linia, sizeof(char) * n);
-        }        
+    tmp = strtok(linia, "|");
+    while(tmp){
+//        printf("%s  ", tmp);
+        (*argumenty) = calloc(sizeof(char), strlen(tmp));
+        strcpy(*argumenty++, tmp);
+        tmp = strtok(NULL, "|");
+//        (*n)++;
+        i++;
     }
-    *argumenty = NULL;        
+    *n = i;
     return start;
 }
 
-int main(int argc, char** argv) {
+int policz_komendy(char *linia){
+    int i=0;
+    char *tmp;
+    tmp = strtok(linia, "|");
+    while(tmp){
+        tmp = strtok(NULL, "|");
+        i++;
+    }
+    return i;    
+}
+
+int main(int args, char** argv) {
 
     char *linia;
     char **polecenie;
     int pid;
-//    char **tekst;    
-    while(1){
-        linia = readline("~ ~ ~ ~> ");
-        polecenie = pobierz_polecenie(linia);    
-        wykonaj_polecenie(polecenie);        
+    int i;
+    int n;
+    w_tle = 0;
+       
+
+    while(linia = readline("~ ~ ~ ~> ")){
+        add_history(linia);
+        polecenie = pobierz_polecenie(linia, &n);
+        for(i=0; i<n; i++){
+            pipe(fd[i]);
+        }
+        i = 0;
+//            printf("KOMENDY: %d\n", n);
+        while(*polecenie != NULL){
+//            printf("%s\n", *polecenie++);
+            wykonaj_polecenie(polecenie++, n--, i++);            
+        }
     }
+    
     return (EXIT_SUCCESS);
 }
 
