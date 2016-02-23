@@ -219,24 +219,42 @@ int policz_komendy(char *linia){
 int main(int args, char** argv) {
 
     char *linia;
+    char *zacheta;
     char **polecenie;
     int pid;
     int i;
     int n;
     w_tle = 0;
+    
+    if(args > 1){
+        i = open(argv[1], O_RDONLY, 0644);
+        close(0);
+        dup(i); 
+//        close(1);
+    }
        
+    if(isatty(0)){
+        strcpy(zacheta,"~~~>");  
+    }
+    else{
+        strcpy(zacheta,"");  
+    }
 
-    while(linia = readline("~ ~ ~ ~> ")){
+
+    while(linia = readline(zacheta)){
         add_history(linia);
-        polecenie = pobierz_polecenie(linia, &n);
-        for(i=0; i<n; i++){
-            pipe(fd[i]);
-        }
-        i = 0;
-//            printf("KOMENDY: %d\n", n);
-        while(*polecenie != NULL){
-//            printf("%s\n", *polecenie++);
-            wykonaj_polecenie(polecenie++, n--, i++);            
+        
+        if (strncmp(linia,"#!",2)){
+            polecenie = pobierz_polecenie(linia, &n);
+            for(i=0; i<n; i++){
+                pipe(fd[i]);
+            }
+            i = 0;
+    //            printf("KOMENDY: %d\n", n);
+            while(*polecenie != NULL){
+    //            printf("%s\n", *polecenie++);
+                wykonaj_polecenie(polecenie++, n--, i++);            
+            }
         }
     }
     
