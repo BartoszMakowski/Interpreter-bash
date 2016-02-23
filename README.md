@@ -5,10 +5,10 @@
 - [x] odczyt i obsługa prostych poleceń z argumentami,
 - [x] przekierowanie standardowego wejścia i wyjścia,
 - [x] przerywanie programów kombinacją Ctrl-C bez przerywania pracy interpretera,
-- [ ] obsługa wewnętrznego polecenia exit,
+- [x] obsługa wewnętrznego polecenia exit,
 - [ ] obsługa procesów działających w tle; wstrzymywanie i wznawianie,
-- [ ] rozpoznawanie pracy interaktywnej i wsadowej,
-- [ ] obsługa potoków,
+- [x] rozpoznawanie pracy interaktywnej i wsadowej,
+- [x] obsługa potoków,
 - [ ] wewnętrzna komenda echo,
 - [ ] obsługa argumentów w postaci zmiennych pozycyjnych,
 - [ ] obsługa zmiennych środowiskowych.
