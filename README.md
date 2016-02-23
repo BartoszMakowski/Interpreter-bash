@@ -3,8 +3,8 @@
 <hr>
 ##Wymagania:
 - [x] odczyt i obsługa prostych poleceń z argumentami,
-- [ ] przekierowanie standardowego wejścia i wyjścia,
-- [ ] przerywanie programów kombinacją Ctrl-C bez przerywania pracy interpretera,
+- [x] przekierowanie standardowego wejścia i wyjścia,
+- [x] przerywanie programów kombinacją Ctrl-C bez przerywania pracy interpretera,
 - [ ] obsługa wewnętrznego polecenia exit,
 - [ ] obsługa procesów działających w tle; wstrzymywanie i wznawianie,
 - [ ] rozpoznawanie pracy interaktywnej i wsadowej,
