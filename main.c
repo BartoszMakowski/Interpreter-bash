@@ -84,7 +84,7 @@ void wykonaj(char **polecenie){
     }
 }
 
-int wykonaj_polecenie(char **polecenie, int n, int k){
+int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
         
     int tlo = 0;
     char **i = calloc(sizeof(char*), 128);
@@ -100,6 +100,8 @@ int wykonaj_polecenie(char **polecenie, int n, int k){
     tmp = strtok(*polecenie, " ");
     while(tmp){
 //        printf("TMP: %s", tmp);
+        zamien_argumenty(argv,&tmp);
+//        printf("/// %s || ", tmp);
         (*i) = calloc(sizeof(char), strlen(tmp));
         strcpy(*i++, tmp);
         tmp = strtok(NULL, " ");
@@ -198,12 +200,12 @@ int wykonaj_polecenie(char **polecenie, int n, int k){
         close(fd[k][1]);
         if(!tlo){
             pid = fg_pid;
-            printf("%d   \n\n", pid);
+//            printf("%d   \n\n", pid);
             pid_tab[k]=pid;
             signal(SIGINT,przekaz_sygnal);
             signal(SIGTSTP,przekaz_sygnal);
             int status;
-            printf("%d   ", n);
+//            printf("%d   ", n);
             if (n==1){
                 waitpid(pid, &status, WUNTRACED | WCONTINUED);
                 int j;
@@ -219,8 +221,8 @@ int wykonaj_polecenie(char **polecenie, int n, int k){
                 waitpid(pid, NULL, WUNTRACED | WCONTINUED | WNOHANG);
                 int j;
                 for(j=0; j<k; j++){
-                    printf("KILL!");
-                    kill(pid_tab[j],SIGINT);
+//                    printf("KILL!");
+                    kill(pid_tab[j], SIGINT);
                 }
             }
     }
@@ -230,7 +232,7 @@ int wykonaj_polecenie(char **polecenie, int n, int k){
 
 
 
-char **pobierz_polecenie(char *linia, int *n){
+char **pobierz_polecenie(char *linia, int *n, char **argv){
     char **start;    
     char **argumenty;
     argumenty = calloc(sizeof(char*), 128);
@@ -241,6 +243,11 @@ char **pobierz_polecenie(char *linia, int *n){
     tmp = strtok(linia, "|");
     while(tmp){
 //        printf("%s  ", tmp);
+//        if(strncmp(tmp,"$",1)==0){
+//            memmove(tmp[1],tmp[0],strlen(tmp));
+//            printf("%s ", tmp);
+//            strcpy(argv[atoi(tmp)],tmp);
+//        }
         (*argumenty) = calloc(sizeof(char), strlen(tmp));
         strcpy(*argumenty++, tmp);
         tmp = strtok(NULL, "|");
@@ -262,6 +269,33 @@ int policz_komendy(char *linia){
     return i;    
 }
 
+void zamien_argumenty(char **argv, char **linia){
+    char *i;
+    char *tmp;
+    i = *linia;
+    if (strchr(i,'$')!=NULL){
+        tmp=malloc(strlen(strchr(i,'$'))*sizeof(char));
+        strcpy(tmp,strchr(i,'$'));
+        memmove(tmp,tmp+1,strlen(tmp));
+        char *tmp2;
+        int n;
+        n = strlen(i) - strlen(tmp) -1;
+//        printf("|| %d | |",n);
+        tmp2 = malloc(sizeof(char) * (n + strlen(argv[atoi(tmp)])));
+        strncpy(tmp2,i,n);
+        strcpy(tmp2+n,argv[atoi(tmp)]);
+//        printf("|WYNIK: %s|",tmp2);
+//        linia = malloc(strlen(tmp2) * sizeof(char));
+//        strcpy(linia,tmp2);
+//        tmp = *linia;
+        *linia = tmp2;
+        free(tmp);
+//        free(tmp2);
+        }
+    
+    
+}
+
 int main(int args, char** argv) {
 
     char *linia;
@@ -273,6 +307,7 @@ int main(int args, char** argv) {
     w_tle = 0;
     signal(SIGINT, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
+    
     
     if(args > 1){
         i = open(argv[1], O_RDONLY, 0644);
@@ -295,15 +330,16 @@ int main(int args, char** argv) {
         while(waitpid(-1,NULL,WNOHANG)>0);
         
         if (strncmp(linia,"#!",2)){
-            polecenie = pobierz_polecenie(linia, &n);
+            polecenie = pobierz_polecenie(linia, &n, argv);
             for(i=0; i<n; i++){
                 pipe(fd[i]);
             }
             i = 0;
     //            printf("KOMENDY: %d\n", n);
             while(*polecenie != NULL){
+//                zamien_argumenty(argv, *polecenie);
     //            printf("%s\n", *polecenie++);
-                wykonaj_polecenie(polecenie++, n--, i++);            
+                wykonaj_polecenie(polecenie++, n--, i++,argv);            
             }
         }
     }
