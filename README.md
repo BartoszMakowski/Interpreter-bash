@@ -10,5 +10,5 @@
 - [x] rozpoznawanie pracy interaktywnej i wsadowej,
 - [x] obsługa potoków,
 - [x] wewnętrzna komenda echo,
-- [ ] obsługa argumentów w postaci zmiennych pozycyjnych,
-- [ ] obsługa zmiennych środowiskowych.
+- [x] obsługa argumentów w postaci zmiennych pozycyjnych,
+- [x] obsługa zmiennych środowiskowych.
