@@ -71,6 +71,19 @@ void czysc_polecenie(char ***polecenie){
     *(polecenie++)=NULL;
 }
 
+void wykonaj(char **polecenie){
+    if(strcmp(polecenie[0], "echo") == 0){
+        char **i;
+        i = polecenie;
+        while(*++i){
+            printf("%s ",*i);
+        }
+    }
+    else{
+        execvp(polecenie[0], polecenie);
+    }
+}
+
 int wykonaj_polecenie(char **polecenie, int n, int k){
         
     int tlo = 0;
@@ -160,7 +173,9 @@ int wykonaj_polecenie(char **polecenie, int n, int k){
         }
         
         if(!tlo){
-            execvp(i[0], i);
+//            printf("JEST DOBRZE\n");
+//            execvp(i[0], i);
+            wykonaj(i);
         }
         else{
             int pid_tlo;
