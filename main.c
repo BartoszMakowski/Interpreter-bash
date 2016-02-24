@@ -29,10 +29,18 @@
 int pid;
 int w_tle;
 int fd[100][2];
+int pid_tab[100];
+int jobs[100];
 
 void przekaz_sygnal(int signo){
-    printf("Przesyłanie sygnału >>%i<< do procesu: >>PID: %i<<\n", signo, pid);
-    kill(pid, signo);
+//    printf("Przesyłanie sygnału >>%i<< do procesu: >>PID: %i<<\n", signo, pid);
+    printf("%d\n", signo);
+    if(signo == SIGTSTP){
+        kill(pid, SIGSTOP);
+    }
+    else{
+        kill(pid, signo);
+    }
 }
 
 void obsluga_procesu_potomnego(int signo){
@@ -64,7 +72,7 @@ void czysc_polecenie(char ***polecenie){
 }
 
 int wykonaj_polecenie(char **polecenie, int n, int k){
-    signal(SIGINT,przekaz_sygnal);        
+        
     int tlo = 0;
     char **i = calloc(sizeof(char*), 128);
     char **start;
@@ -110,9 +118,7 @@ int wykonaj_polecenie(char **polecenie, int n, int k){
 //            wypisz_polecenie(&*polecenie);
         }        
     }
-    
-
-    
+   
     if(strcmp(*--i,"&")==0){
         *i = NULL;
         free(*i);
@@ -120,10 +126,12 @@ int wykonaj_polecenie(char **polecenie, int n, int k){
     }
     
     i = start;
+    int fg_pid;
     
     wypisz_polecenie(&*i); 
         
-    if ((pid=fork())==0){
+    if ((fg_pid=fork())==0){
+        signal(SIGINT, SIG_DFL);
             if(k > 0){
                 dup2(fd[k-1][0], 0);
                 close(fd[k-1][0]);
@@ -171,12 +179,35 @@ int wykonaj_polecenie(char **polecenie, int n, int k){
         exit(0);
     }
     else{
+        
         close(fd[k][1]);
         if(!tlo){
+            pid = fg_pid;
+            printf("%d   \n\n", pid);
+            pid_tab[k]=pid;
+            signal(SIGINT,przekaz_sygnal);
+            signal(SIGTSTP,przekaz_sygnal);
             int status;
-            waitpid(pid, &status, 0);
+            printf("%d   ", n);
+            if (n==1){
+                waitpid(pid, &status, WUNTRACED | WCONTINUED);
+                int j;
+                for(j=0; j<k; j++){
+                    kill(pid_tab[j],SIGINT);
+                }
+            }
+//            pid = 0;
+            signal(SIGTSTP, SIG_IGN);
 //            printf("PID: %d | STATUS ZAKOŃCZENIA: %d\n", pid, status);             
         }
+        if (n==1){
+                waitpid(pid, NULL, WUNTRACED | WCONTINUED | WNOHANG);
+                int j;
+                for(j=0; j<k; j++){
+                    printf("KILL!");
+                    kill(pid_tab[j],SIGINT);
+                }
+            }
     }
 
     return 0;    
@@ -225,6 +256,8 @@ int main(int args, char** argv) {
     int i;
     int n;
     w_tle = 0;
+    signal(SIGINT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
     
     if(args > 1){
         i = open(argv[1], O_RDONLY, 0644);
@@ -242,7 +275,9 @@ int main(int args, char** argv) {
 
 
     while(linia = readline(zacheta)){
+        
         add_history(linia);
+        while(waitpid(-1,NULL,WNOHANG)>0);
         
         if (strncmp(linia,"#!",2)){
             polecenie = pobierz_polecenie(linia, &n);
@@ -260,4 +295,3 @@ int main(int args, char** argv) {
     
     return (EXIT_SUCCESS);
 }
-
