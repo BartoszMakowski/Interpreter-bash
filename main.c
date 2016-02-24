@@ -98,9 +98,10 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
     char *tmp;
     
     tmp = strtok(*polecenie, " ");
-    while(tmp){
+    while(tmp!=NULL){
 //        printf("TMP: %s", tmp);
         zamien_argumenty(argv,&tmp);
+        ustaw_zmienna(tmp);
 //        printf("/// %s || ", tmp);
         (*i) = calloc(sizeof(char), strlen(tmp));
         strcpy(*i++, tmp);
@@ -280,10 +281,17 @@ void zamien_argumenty(char **argv, char **linia){
         char *tmp2;
         int n;
         n = strlen(i) - strlen(tmp) -1;
-//        printf("|| %d | |",n);
-        tmp2 = malloc(sizeof(char) * (n + strlen(argv[atoi(tmp)])));
-        strncpy(tmp2,i,n);
-        strcpy(tmp2+n,argv[atoi(tmp)]);
+//        printf("|| %s | |",tmp);
+        if(isdigit(*tmp)){
+            tmp2 = malloc(sizeof(char) * (n + strlen(argv[atoi(tmp)])));
+            strncpy(tmp2,i,n);
+            strcpy(tmp2+n,argv[atoi(tmp)]);
+        } else{
+            tmp2 = malloc(sizeof(char) * (n + strlen(getenv(tmp))));
+            strncpy(tmp2,i,n);
+            strcpy(tmp2+n,getenv(tmp));
+            
+        }
 //        printf("|WYNIK: %s|",tmp2);
 //        linia = malloc(strlen(tmp2) * sizeof(char));
 //        strcpy(linia,tmp2);
@@ -291,8 +299,17 @@ void zamien_argumenty(char **argv, char **linia){
         *linia = tmp2;
         free(tmp);
 //        free(tmp2);
+        }   
+}
+
+void ustaw_zmienna(char *komenda){
+    char *tmp;
+    if(strchr(komenda, '=')){
+    tmp = strtok(komenda,"=");
+        if (tmp!=NULL){   
+            setenv(tmp,strtok(NULL,"="),1);
         }
-    
+    }
     
 }
 
@@ -339,7 +356,7 @@ int main(int args, char** argv) {
             while(*polecenie != NULL){
 //                zamien_argumenty(argv, *polecenie);
     //            printf("%s\n", *polecenie++);
-                wykonaj_polecenie(polecenie++, n--, i++,argv);            
+                wykonaj_polecenie(polecenie++, n--, i++,argv); 
             }
         }
     }
