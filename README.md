@@ -9,6 +9,6 @@
 - [ ] obsługa procesów działających w tle; wstrzymywanie i wznawianie,
 - [x] rozpoznawanie pracy interaktywnej i wsadowej,
 - [x] obsługa potoków,
-- [ ] wewnętrzna komenda echo,
+- [x] wewnętrzna komenda echo,
 - [ ] obsługa argumentów w postaci zmiennych pozycyjnych,
 - [ ] obsługa zmiennych środowiskowych.
