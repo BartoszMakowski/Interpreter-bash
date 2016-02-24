@@ -55,11 +55,11 @@ void obsluga_procesu_potomnego(int signo){
 }
 
 void wypisz_polecenie(char **polecenie){
-//    printf("POLECENIE:");
-//    while(*polecenie){
-//        printf(" %s",*polecenie++);
-//    }   
-//    printf("\n");    
+    printf("POLECENIE:");
+    while(*polecenie){
+        printf(" %s",*polecenie++);
+    }   
+    printf("\n");    
 }
 
 void czysc_polecenie(char ***polecenie){
@@ -78,8 +78,8 @@ void wykonaj(char **polecenie){
         while(*++i){
             printf("%s ",*i);
         }
-    }
-    else{
+    } else
+    {
         execvp(polecenie[0], polecenie);
     }
 }
@@ -95,24 +95,33 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
     char *wejscie = NULL;
 //    int pid;
     int fd_we, fd_wy;    
-    char *tmp;
+    char *tmp, *tmp2;
+    
+    ustaw_zmienna(*polecenie);;
     
     tmp = strtok(*polecenie, " ");
     while(tmp!=NULL){
 //        printf("TMP: %s", tmp);
-        zamien_argumenty(argv,&tmp);
-        ustaw_zmienna(tmp);
+        zamien_argumenty(argv,&tmp);        
 //        printf("/// %s || ", tmp);
         (*i) = calloc(sizeof(char), strlen(tmp));
         strcpy(*i++, tmp);
-        tmp = strtok(NULL, " ");
+        if(!(tmp=strtok(NULL,"\""))){
+            tmp = strtok(NULL, " ");
+        }
     }
     
     i = start;
     
     if(strcmp(*i,"exit") == 0){
         exit(0);
-    }
+    } else
+    if(strcmp(*i, "unset") == 0){
+        if(*++i){
+            printf("NAZWA ZMIENNEJ: |%s|",*i);
+            unsetenv(*i);
+        }
+    } 
     
     while (*i) {
         if(strcmp(*i,">")==0){
@@ -144,7 +153,7 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
     i = start;
     int fg_pid;
     
-    wypisz_polecenie(&*i); 
+//    wypisz_polecenie(&*i); 
         
     if ((fg_pid=fork())==0){
         signal(SIGINT, SIG_DFL);
@@ -287,9 +296,17 @@ void zamien_argumenty(char **argv, char **linia){
             strncpy(tmp2,i,n);
             strcpy(tmp2+n,argv[atoi(tmp)]);
         } else{
-            tmp2 = malloc(sizeof(char) * (n + strlen(getenv(tmp))));
-            strncpy(tmp2,i,n);
-            strcpy(tmp2+n,getenv(tmp));
+            
+            if(getenv(tmp)){
+                tmp2 = malloc(sizeof(char) * (n + strlen(getenv(tmp))));
+                strncpy(tmp2,i,n);
+                strcpy(tmp2+n,getenv(tmp));
+            }
+            else{
+                tmp2 = malloc(sizeof(char) * n);
+                strncpy(tmp2,i,n);                
+            }
+            
             
         }
 //        printf("|WYNIK: %s|",tmp2);
@@ -303,11 +320,20 @@ void zamien_argumenty(char **argv, char **linia){
 }
 
 void ustaw_zmienna(char *komenda){
-    char *tmp;
+    char *tmp, *tmp2;
     if(strchr(komenda, '=')){
     tmp = strtok(komenda,"=");
         if (tmp!=NULL){   
-            setenv(tmp,strtok(NULL,"="),1);
+            tmp2=strtok(NULL,"=");
+            if(strchr(tmp2,'"')){
+              tmp2=strtok(tmp2,"\"");
+
+            }else
+            {
+                tmp2=strtok(tmp2," ");
+                
+            }
+            setenv(tmp,tmp2,1);
         }
     }
     
