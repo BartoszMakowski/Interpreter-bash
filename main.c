@@ -9,6 +9,8 @@
  * Created on 18 stycznia 2016, 20:47
  */
 
+#define N 100
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <readline/readline.h>
@@ -22,24 +24,29 @@
 #include <fcntl.h>
 #include <signal.h>
 
+#include "obrobka_tekstu.h"
+
 /*
  * 
  */
 
 int pid;
-int w_tle;
 int fd[100][2];
-int pid_tab[100];
-int jobs[100];
+//int pid_tab[N];
+int jobs[N];
 
 void przekaz_sygnal(int signo){
 //    printf("Przesyłanie sygnału >>%i<< do procesu: >>PID: %i<<\n", signo, pid);
     printf("%d\n", signo);
-    if(signo == SIGTSTP){
-        kill(pid, SIGSTOP);
-    }
-    else{
-        kill(pid, signo);
+    if(pid){
+        if(signo == SIGTSTP){
+            kill(pid, SIGSTOP);
+            dodaj_do_jobs(pid);
+            moje_fg(pid);
+        }
+        else{
+            kill(pid, signo);
+        }
     }
 }
 
@@ -52,6 +59,56 @@ void obsluga_procesu_potomnego(int signo){
     else{
         printf("PID %d: status zakończenia: %d\n", pid, s>>8);
     }    
+}
+
+void dodaj_do_jobs(int pid){
+    int i;
+    for(i=0; i<N; i++){
+        if(!jobs[i]){
+            jobs[i]=pid;
+            break;
+        }
+    }
+}
+
+void wypisz_jobs(){
+    int i;
+    int s;
+    printf("PROCESY W(S)TRZYMANE I (Z)AKOŃCZONE:\n");
+    for(i=0; i<N; i++){
+        if (jobs[i]){
+            printf("PID: %d\n",jobs[i]);
+//            s=waitpid(jobs[i], &s, WUNTRACED | WNOHANG | WCONTINUED);
+//            if(WIFSTOPPED(s)) printf("S\t%d\n", jobs[i]);
+//            else if (WIFEXITED(s)){
+//                printf("Z\t%d\n", jobs[i]);
+//                jobs[i]=0;
+//            }
+
+        }
+    }
+    
+
+
+}
+
+void moje_fg(int pid2){
+    pid = pid2;
+    kill(pid, SIGCONT);
+    printf("PID %d", pid);
+    int s;
+    do{
+        waitpid(pid, &s, WNOHANG);
+    } while (!WIFEXITED(s) && !WIFSIGNALED(s)); 
+    
+    if (WIFEXITED(s)) {
+        printf("zakonczony", WEXITSTATUS(s));
+    } else if (WIFSIGNALED(s)) {
+        printf("unicestwiony", WTERMSIG(s));
+    } else if (WIFSTOPPED(s)) {
+        printf("wstrzymany", WSTOPSIG(s));
+    }//while(!WIFEXITED(s));
+
 }
 
 void wypisz_polecenie(char **polecenie){
@@ -97,29 +154,31 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
     int fd_we, fd_wy;    
     char *tmp, *tmp2;
     
-    ustaw_zmienna(*polecenie);;
+    ustaw_zmienna(*polecenie);
     
     tmp = strtok(*polecenie, " ");
     while(tmp!=NULL){
-//        printf("TMP: %s", tmp);
         zamien_argumenty(argv,&tmp);        
-//        printf("/// %s || ", tmp);
         (*i) = calloc(sizeof(char), strlen(tmp));
         strcpy(*i++, tmp);
-        if(!(tmp=strtok(NULL,"\""))){
-            tmp = strtok(NULL, " ");
-        }
+        tmp = strtok(NULL," ");
     }
     
     i = start;
     
     if(strcmp(*i,"exit") == 0){
         exit(0);
-    } else
-    if(strcmp(*i, "unset") == 0){
+    } else if(strcmp(*i,"fg") == 0){
+            moje_fg(atoi(*++i));
+            return;
+    } else if(strcmp(*i, "jobs") == 0){
+        wypisz_jobs();
+        return;
+    } else if(strcmp(*i, "unset") == 0){
         if(*++i){
             printf("NAZWA ZMIENNEJ: |%s|",*i);
             unsetenv(*i);
+            return;
         }
     } 
     
@@ -153,17 +212,16 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
     i = start;
     int fg_pid;
     
-//    wypisz_polecenie(&*i); 
         
     if ((fg_pid=fork())==0){
         signal(SIGINT, SIG_DFL);
             if(k > 0){
                 dup2(fd[k-1][0], 0);
-                close(fd[k-1][0]);
+                close(fd[k-1][1]);
             }
             if(n>1){
                 dup2(fd[k][1], 1);
-                close(fd[k][1]);
+                close(fd[k][0]);
             }
         if(wyjscie){
 //            printf("WYJŚĆIE: %s \n", wyjscie);
@@ -178,15 +236,11 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
             }            
         }
         if(wejscie){
-//            printf("WEJŚĆIE: %s \n", wejscie);
-            close(0);
-            fd_wy = open(wejscie, O_RDONLY, 0644);
-            dup2(0,fd_we);
+            fd_we = open(wejscie, O_RDONLY, 0644);
+            dup2(fd_we,0);
         }
         
         if(!tlo){
-//            printf("JEST DOBRZE\n");
-//            execvp(i[0], i);
             wykonaj(i);
         }
         else{
@@ -194,74 +248,58 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
             int status;
             pid_tlo = fork();
             if(pid_tlo == 0){
-                execvp(i[0], i);                
+                wykonaj(i);                
             }
             else{
+//                dodaj_do_jobs(pid_tlo);
                 waitpid(pid_tlo, &status, 0);
-                printf("PID: %d | STATUS ZAKOŃCZENIA: %d\n", pid_tlo, status);                
+                printf("PID: %d | STATUS ZAKOŃCZENIA: %d\n", pid_tlo, status); 
+                exit(0);
             }
         }
-//        
-//        close(fd[1]);
-        exit(0);
+
     }
     else{
-        
-        close(fd[k][1]);
-        if(!tlo){
-            pid = fg_pid;
-//            printf("%d   \n\n", pid);
-            pid_tab[k]=pid;
-            signal(SIGINT,przekaz_sygnal);
-            signal(SIGTSTP,przekaz_sygnal);
-            int status;
-//            printf("%d   ", n);
-            if (n==1){
-                waitpid(pid, &status, WUNTRACED | WCONTINUED);
-                int j;
-                for(j=0; j<k; j++){
-                    kill(pid_tab[j],SIGINT);
-                }
-            }
-//            pid = 0;
-            signal(SIGTSTP, SIG_IGN);
-//            printf("PID: %d | STATUS ZAKOŃCZENIA: %d\n", pid, status);             
+        if(k>0){
+            close(fd[k-1][0]);
         }
-        if (n==1){
-                waitpid(pid, NULL, WUNTRACED | WCONTINUED | WNOHANG);
-                int j;
-                for(j=0; j<k; j++){
-//                    printf("KILL!");
-                    kill(pid_tab[j], SIGINT);
-                }
-            }
+        if(n>1){
+            close(fd[k][1]);
+        }
+        else{
+//            waitpid(fg_pid, NULL, 0);
+        }
     }
 
-    return 0;    
+    return fg_pid;
 }
 
 
 
-char **pobierz_polecenie(char *linia, int *n, char **argv){
+char **pobierz_polecenie(char *linia, int *n, char **argv, int *tlo){
     char **start;    
     char **argumenty;
     argumenty = calloc(sizeof(char*), 128);
     start = argumenty;
     char *tmp;
-    int i=0;
+    int i=0;    
+    tmp = linia;
+    
+    *tlo = 0;
+    while(*tmp)
+    {
+        if(*tmp=='&'){
+            *tlo = 1;
+            break;
+        }
+        tmp++;        
+    }
     
     tmp = strtok(linia, "|");
     while(tmp){
-//        printf("%s  ", tmp);
-//        if(strncmp(tmp,"$",1)==0){
-//            memmove(tmp[1],tmp[0],strlen(tmp));
-//            printf("%s ", tmp);
-//            strcpy(argv[atoi(tmp)],tmp);
-//        }
         (*argumenty) = calloc(sizeof(char), strlen(tmp));
         strcpy(*argumenty++, tmp);
         tmp = strtok(NULL, "|");
-//        (*n)++;
         i++;
     }
     *n = i;
@@ -290,7 +328,6 @@ void zamien_argumenty(char **argv, char **linia){
         char *tmp2;
         int n;
         n = strlen(i) - strlen(tmp) -1;
-//        printf("|| %s | |",tmp);
         if(isdigit(*tmp)){
             tmp2 = malloc(sizeof(char) * (n + strlen(argv[atoi(tmp)])));
             strncpy(tmp2,i,n);
@@ -306,17 +343,10 @@ void zamien_argumenty(char **argv, char **linia){
                 tmp2 = malloc(sizeof(char) * n);
                 strncpy(tmp2,i,n);                
             }
-            
-            
         }
-//        printf("|WYNIK: %s|",tmp2);
-//        linia = malloc(strlen(tmp2) * sizeof(char));
-//        strcpy(linia,tmp2);
-//        tmp = *linia;
         *linia = tmp2;
         free(tmp);
-//        free(tmp2);
-        }   
+    }   
 }
 
 void ustaw_zmienna(char *komenda){
@@ -326,12 +356,9 @@ void ustaw_zmienna(char *komenda){
         if (tmp!=NULL){   
             tmp2=strtok(NULL,"=");
             if(strchr(tmp2,'"')){
-              tmp2=strtok(tmp2,"\"");
-
-            }else
-            {
-                tmp2=strtok(tmp2," ");
-                
+                tmp2=strtok(tmp2,"\"");
+            }else{
+                tmp2=strtok(tmp2," ");                
             }
             setenv(tmp,tmp2,1);
         }
@@ -339,52 +366,70 @@ void ustaw_zmienna(char *komenda){
     
 }
 
+void wykonaj_z_potokami(char **polecenie, int n, int i, char **argv){
+    
+    if(*polecenie != NULL){  
+        wykonaj_z_potokami(polecenie+1, n-1, i+1, argv);
+        pipe(fd[i-1]);
+        wykonaj_polecenie(polecenie, n, i, argv);
+    }    
+}
+
 int main(int args, char** argv) {
 
     char *linia;
     char *zacheta;
     char **polecenie;
-    int pid;
+    int pid = 0;
     int i;
     int n;
-    w_tle = 0;
+    int *w_tle;
+    
     signal(SIGINT, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
+    signal(SIGCLD, SIG_IGN);
     
+    for (i=0; i<N; i++){
+        jobs[i]=0;
+    }
     
     if(args > 1){
         i = open(argv[1], O_RDONLY, 0644);
-        close(0);
-        dup(i); 
-//        close(1);
+        dup2(i, 0);
     }
        
     if(isatty(0)){
+        zacheta = malloc(sizeof(char)*5);
         strcpy(zacheta,"~~~>");  
     }
     else{
         strcpy(zacheta,"");  
     }
-
-
+    
     while(linia = readline(zacheta)){
-        
         add_history(linia);
-        while(waitpid(-1,NULL,WNOHANG)>0);
-        
         if (strncmp(linia,"#!",2)){
-            polecenie = pobierz_polecenie(linia, &n, argv);
-            for(i=0; i<n; i++){
-                pipe(fd[i]);
+            polecenie = pobierz_polecenie(linia, &n, argv, w_tle);
+            if (n>1){
+                pid=fork();
+                if (pid == 0){
+                    wykonaj_z_potokami(polecenie, n, 0, argv);
+                    exit(0);
+                }
+                waitpid(pid, NULL, 0);
+                pid = 0;
             }
-            i = 0;
-    //            printf("KOMENDY: %d\n", n);
-            while(*polecenie != NULL){
-//                zamien_argumenty(argv, *polecenie);
-    //            printf("%s\n", *polecenie++);
-                wykonaj_polecenie(polecenie++, n--, i++,argv); 
-            }
+            else if (n == 1) {                
+                int tmp_pid;
+                tmp_pid=wykonaj_polecenie(polecenie, 1, 0, argv);
+                if(*w_tle == 0){                    
+                    pid=tmp_pid;
+                    waitpid(pid, 0, NULL);
+                    pid = 0;
+                }
+            }             
         }
+        free(linia);
     }
     
     return (EXIT_SUCCESS);
