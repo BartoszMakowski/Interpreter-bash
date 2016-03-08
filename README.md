@@ -6,9 +6,9 @@
 - [x] przekierowanie standardowego wejścia i wyjścia,
 - [x] przerywanie programów kombinacją Ctrl-C bez przerywania pracy interpretera,
 - [x] obsługa wewnętrznego polecenia exit,
-- [ ] obsługa procesów działających w tle; wstrzymywanie i wznawianie,
+- [x] obsługa procesów działających w tle; wstrzymywanie i wznawianie (jest: jobs, fg, Ctrl+Z, dodać: bg),
 - [x] rozpoznawanie pracy interaktywnej i wsadowej,
 - [x] obsługa potoków,
 - [x] wewnętrzna komenda echo,
-- [x] obsługa argumentów w postaci zmiennych pozycyjnych,
+- [ ] obsługa argumentów w postaci zmiennych pozycyjnych (poprawić dla trybu wsadowego),
 - [x] obsługa zmiennych środowiskowych.
