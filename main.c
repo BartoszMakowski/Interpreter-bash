@@ -9,12 +9,8 @@
  * Created on 18 stycznia 2016, 20:47
  */
 
-#include <stdlib.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-#include <ctype.h>
-#include <unistd.h>
-#include <string.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
 
@@ -22,26 +18,22 @@
 #include "obrobka_tekstu.h"
 #include "polecenia.h"
 
-//void domyslne_sygnaly(); // przywraca domyslna obsluge 
-//
-///*
-// * 
-// */
-//
 
 int main(int args, char** argv) {
 
     char *linia;
     char *zacheta;
-    char **polecenie;
-    pid = 0;
+    char **polecenie;    
     int i;
     int n;
     int *w_tle;
     
+    pid = 0;
+    w_tle = malloc(sizeof(int));
+    *w_tle=0;
+    
     signal(SIGINT, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
-//    signal(SIGCLD, SIG_IGN);
     
     for (i=0; i<N; i++){
         jobs[i]=0;
@@ -57,10 +49,11 @@ int main(int args, char** argv) {
         strcpy(zacheta,"~~~>");  
     }
     else{
+    zacheta = malloc(sizeof(char));
         strcpy(zacheta,"");  
     }
     
-    while(linia = readline(zacheta)){
+    while((linia = readline(zacheta)) != NULL){
         add_history(linia);
         if (strncmp(linia,"#!",2)){
             polecenie = pobierz_polecenie(linia, &n, argv, w_tle);
@@ -68,7 +61,6 @@ int main(int args, char** argv) {
                 pid=fork();
                 if (pid == 0){
                     signal(SIGINT, SIG_DFL);
-//                    signal(SIGCONT, SIG_IGN);
                     int tpid;
                     tpid = wykonaj_z_potokami(polecenie, n, 0, argv);
                     waitpid(tpid, NULL, 0);
@@ -88,7 +80,6 @@ int main(int args, char** argv) {
                     pid = tmp_pid;
                     signal(SIGINT, przekaz_sygnal);
                     signal(SIGTSTP, przekaz_sygnal);
-//                    printf("PID: %d\n", pid);
                     waitpid(pid, 0, WUNTRACED);
                     signal(SIGTSTP, SIG_IGN);
                     signal(SIGINT, SIG_IGN);
@@ -97,7 +88,6 @@ int main(int args, char** argv) {
             }             
         }
         free(linia);
-    }
-    
+    }    
     return (EXIT_SUCCESS);
 }

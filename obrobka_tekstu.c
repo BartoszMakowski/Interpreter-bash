@@ -1,31 +1,30 @@
-#include <stdio.h>
 #include "obrobka_tekstu.h"
 
 void zamien_argumenty(char **argv, char **linia){
     char *i;
     char *tmp;
     i = *linia;
-    if (strchr(i,'$')!=NULL){
-        tmp=malloc(strlen(strchr(i,'$'))*sizeof(char));
-        strcpy(tmp,strchr(i,'$'));
-        memmove(tmp,tmp+1,strlen(tmp));
+    if (strchr(i, '$')!=NULL){
+        tmp=malloc(strlen(strchr(i, '$'))*sizeof(char));
+        strcpy(tmp, strchr(i, '$'));
+        memmove(tmp, tmp+1, strlen(tmp));
         char *tmp2;
         int n;
         n = strlen(i) - strlen(tmp) -1;
         if(isdigit(*tmp)){
             tmp2 = malloc(sizeof(char) * (n + strlen(argv[atoi(tmp)])));
-            strncpy(tmp2,i,n);
-            strcpy(tmp2+n,argv[atoi(tmp)]);
+            strncpy(tmp2, i, n);
+            strcpy(tmp2+n, argv[atoi(tmp)]);
         } else{
             
             if(getenv(tmp)){
                 tmp2 = malloc(sizeof(char) * (n + strlen(getenv(tmp))));
-                strncpy(tmp2,i,n);
-                strcpy(tmp2+n,getenv(tmp));
+                strncpy(tmp2, i, n);
+                strcpy(tmp2+n, getenv(tmp));
             }
             else{
                 tmp2 = malloc(sizeof(char) * n);
-                strncpy(tmp2,i,n);                
+                strncpy(tmp2, i, n);                
             }
         }
         *linia = tmp2;
@@ -44,7 +43,7 @@ void wypisz_polecenie(char **polecenie){
 void czysc_polecenie(char ***polecenie){
     while (*(polecenie+2)) {        
         *(polecenie) = *(polecenie+2);
-        *polecenie++; 
+        polecenie++; 
     }
     *(polecenie++)=NULL;
     *(polecenie++)=NULL;

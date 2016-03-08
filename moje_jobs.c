@@ -3,7 +3,6 @@
 void dodaj_do_jobs(int pid, int *jobs, int n){
     int i;
     for(i=0; i<n; i++){
-    	printf("FOR_LOOP: %d\n", i);
         if(!jobs[i]){
             jobs[i]=pid;
             break;
@@ -24,7 +23,6 @@ void usun_z_jobs(int pid, int *jobs, int n){
 void wypisz_jobs(int *jobs, int n){
 	printf("N: %d\n", n);
     int i;
-    int s;
     printf("PROCESY WSTRZYMANE:\n");
     for(i=0; i<n; i++){
         if (jobs[i]){
@@ -36,29 +34,30 @@ void wypisz_jobs(int *jobs, int n){
     return ;
 }
 
-int moje_fg(int *pid, int *jobs, int n){    
+void moje_fg(int *pid, int *jobs, int n){    
     kill(*pid, SIGCONT);
-    printf("PID %d", *pid);
+    //printf("PID %d", *pid);
     int s;
     s=-1;
     while(1){
         waitpid(*pid, &s, WUNTRACED | WCONTINUED);
     
         if (WIFEXITED(s)) {
-            printf("zakonczony", WEXITSTATUS(s));
+            printf("zakonczony\n", WEXITSTATUS(s));
             usun_z_jobs(*pid, jobs, n);
             break;
         } else if (WIFSIGNALED(s)) {
-            printf("unicestwiony", WTERMSIG(s));
+            printf("unicestwiony\n", WTERMSIG(s));
             usun_z_jobs(*pid, jobs, n);
             break;
         } else if (WIFSTOPPED(s)) {
-            printf("wstrzymany", WSTOPSIG(s));
+            printf("wstrzymany\n", WSTOPSIG(s));
             break;
         }        
     }
     
     *pid = 0;
+    return;
 
 }
 

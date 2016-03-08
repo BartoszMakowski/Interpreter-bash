@@ -7,8 +7,7 @@ void wykonaj(char **polecenie){
         while(*++i){
             printf("%s ",*i);
         }
-    } else
-    {
+    } else {
         execvp(polecenie[0], polecenie);
     }
 }
@@ -17,14 +16,14 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
         
     int tlo = 0;
     char **i = calloc(sizeof(char*), 128);
-    char **start;
-    start = i;
+    char **start;    
     char dopisz = 0;
     char *wyjscie = NULL;
     char *wejscie = NULL;
-//    int pid;
-    int fd_we, fd_wy;    
-    char *tmp, *tmp2;
+    int fd_we, fd_wy; // deskeyptory WE/WY
+    char *tmp;
+    
+    start = i;
     
     ustaw_zmienna(*polecenie);
     
@@ -43,37 +42,33 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
     } else if(strcmp(*i,"fg") == 0){
         pid = atoi(*++i);
         signal(SIGTSTP, przekaz_sygnal);            
-        moje_fg(&pid, &jobs, N);
-        return;
+        moje_fg(&pid, jobs, N);
+        return 0;
     } else if(strcmp(*i, "jobs") == 0){
-        wypisz_jobs(&jobs, N);
+        wypisz_jobs(jobs, N);
         return 0;
     } else if(strcmp(*i, "unset") == 0){
         if(*++i){
-            printf("NAZWA ZMIENNEJ: |%s|",*i);
+            //printf("NAZWA ZMIENNEJ: |%s|",*i);
             unsetenv(*i);
-            return;
+            return 0;
         }
     } 
     
     while (*i) {
         if(strcmp(*i,">")==0){
             wyjscie = *++i;
-            czysc_polecenie(&*(i-1));
-            *i--;
-//            wypisz_polecenie(&*polecenie);
+            czysc_polecenie((i-1));
+            i--;
         } else if(strcmp(*i,">>")==0){
             dopisz = 1;
             wyjscie = *++i;
-            czysc_polecenie(&*(i-1));            
-            *i--;
-//            wypisz_polecenie(&*polecenie);
+            czysc_polecenie((i-1));            
+            i--;
         } else if(strcmp(*i++,"<")==0){
             wejscie = *i++;
-            czysc_polecenie(&*(i-2));
-            *i--;
-            *i--;
-//            wypisz_polecenie(&*polecenie);
+            czysc_polecenie((i-2));
+            i-=2;
         }        
     }
    
@@ -88,7 +83,6 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
     
         
     if ((fg_pid=fork())==0){
-//        signal(SIGINT, SIG_DFL);
         domyslne_sygnaly();
         signal(SIGTSTP, SIG_DFL);
             if(k > 0){
@@ -100,7 +94,6 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
                 close(fd[k][0]);
             }
         if(wyjscie){
-//            printf("WYJŚĆIE: %s \n", wyjscie);
             close(1);
             switch (dopisz){
                 case 0:
@@ -129,7 +122,6 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
                 wykonaj(i);                
             }
             else{
-//                dodaj_do_jobs(pid_tlo);
                 signal(SIGCLD, SIG_DFL);
                 signal(SIGINT, SIG_IGN);
                 waitpid(pid_tlo, &status, 0);
@@ -137,7 +129,6 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
                 exit(0);
             }
         }
-
     }
     else{
         if(k>0){
@@ -146,11 +137,8 @@ int wykonaj_polecenie(char **polecenie, int n, int k, char **argv){
         if(n>1){
             close(fd[k][1]);
         }
-        else{
-//            waitpid(fg_pid, NULL, 0);
-        }
     }
-
+    free(i);
     return fg_pid;
 }
 
@@ -159,10 +147,9 @@ void przekaz_sygnal(int signo){
     printf("%d\n", signo);
     if(pid){
         if(signo == SIGTSTP){
-            printf("Przesyłanie sygnału >>%i<< do procesu: >>PID: %i<<\n", signo, pid);
+            //printf("Przesyłanie sygnału >>%i<< do procesu: >>PID: %i<<\n", signo, pid);
             kill(pid, SIGSTOP);
-            dodaj_do_jobs(pid, &jobs, N);
-//            moje_fg(pid);
+            dodaj_do_jobs(pid, jobs, N);
         }
         else{
             kill(pid, signo);
